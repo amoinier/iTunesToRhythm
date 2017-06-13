@@ -1,0 +1,25 @@
+{
+  "name": "iTunesToRhythm",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/amoinier/iTunesToRhythm.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/amoinier/iTunesToRhythm/issues"
+  },
+  "homepage": "https://github.com/amoinier/iTunesToRhythm#readme",
+  "dependencies": {
+    "async": "^2.4.1",
+    "object-to-xml": "^1.1.0",
+    "xml2js": "^0.4.17"
+  }
+}

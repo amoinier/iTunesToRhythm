@@ -1,73 +1,76 @@
-var fs			= require('fs');
-var xml2js		= require('xml2js');
-var o2x	= require('object-to-xml');
-var async		= require('async');
+const fs = require('fs')
+const xml2js = require('xml2js')
+const o2x = require('object-to-xml')
+const async = require('async')
+const os = require('os')
 
-var parser = new xml2js.Parser();
-async.parallel({
-	itunes: function(callback) {
-		fs.readFile('../../Musique/Bibliothèque.xml', 'utf8', function(err, file) {
-			if (!err && file) {
-				parser.parseString(file, function(err, xml) {
-					if (!err) {
-						return callback(null, xml);
-					}
-					else {
-						return callback(err, null);
-					}
-				})
-			}
-			else {
-				return callback(err, null);
-			}
-		})
-	},
-	rhythm: function(callback) {
-		fs.readFile('../../.local/share/rhythmbox/rhythmdb.xml', 'utf8', function(err, file) {
-			if (!err && file) {
-				parser.parseString(file, function(err, xml) {
-					if (!err) {
-						return callback(null, xml);
-					}
-					else {
-						return callback(err, null);
-					}
-				})
-			}
-			else {
-				return callback(err, null);
-			}
-		})
-	},
-}, function(err, results) {
-	if (err) {
-		console.log(err);
-		return 0;
-	}
-	else {
-		var itunesMusic = results.itunes.plist.dict[0].dict[0].dict;
-		var rhythmMusic = results.rhythm.rhythmdb.entry;
-		var newFile = [];
-		var count = 0;
+let parser = new xml2js.Parser()
 
-		async.eachOf(rhythmMusic, function(value, key, callback) {
-			for (var i = 0; i < itunesMusic.length; i++) {
-				if (itunesMusic[i].string[0].toLowerCase().indexOf('eh!de') >= 0 && value.title[0].toLowerCase().indexOf('eh!de') >= 0) {
-					console.log(value.title[0] == itunesMusic[i].string[0]);
-					console.log(value.title[0] + " == " + itunesMusic[i].string[0]);
-				}
-				if (value.title[0] == itunesMusic[i].string[0] && value.artist[0] == itunesMusic[i].string[1]) {
-					value['first-seen'] = [parseInt(new Date(itunesMusic[i].date[1]).getTime() / 1000)];
-					newFile.push(value);
-					count++;
-				}
-			}
-			return callback();
-		}, function(err) {
-			results.rhythm.rhythmdb.entry = newFile;
-			var newXml = o2x(results.rhythm.rhythmdb);
+if (!process.argv[2]) {
+  console.log('ERROR: no path sent')
+  console.log('ex: node index.js')
+} else {
+  async.parallel({
 
-			console.log(newXml.toString());
-		})
-	}
-});
+    itunes: function (callback) {
+      fs.readFile(process.argv[2], 'utf8', (err, file) => {
+        if (err || !file) {
+          return callback(err)
+        } else {
+          parser.parseString(file, (err, xml) => {
+            return callback(err, xml)
+          })
+        }
+      })
+    },
+
+    rhythm: function (callback) {
+      fs.readFile(os.homedir() + '/.local/share/rhythmbox/rhythmdb.xml', 'utf8', (err, file) => {
+        if (err || !file) {
+          return callback(err, null)
+        } else {
+          parser.parseString(file, (err, xml) => {
+            return callback(err, xml)
+          })
+        }
+      })
+    }
+
+  }, (err, results) => {
+    if (err) {
+      console.log(err)
+      return err
+    } else {
+      let itunesMusic = results.itunes.plist.dict[0].dict[0].dict
+      let rhythmMusic = results.rhythm.rhythmdb.entry
+      let newFile = []
+
+      async.eachOf(rhythmMusic, (value, key, callback) => {
+        for (let i = 0; i < itunesMusic.length; i++) {
+          if (value.title[0].toLowerCase() === itunesMusic[i].string[2].toLowerCase() && value.artist[0] === itunesMusic[i].string[3]) {
+            value['first-seen'] = [parseInt(new Date(itunesMusic[i].date[1]).getTime() / 1000)]
+            newFile.push(value)
+            break
+          }
+        }
+        return callback()
+      }, function (err) {
+        if (err) {
+          console.log(err)
+        }
+        results.rhythm.rhythmdb.entry = newFile
+
+        results.rhythm = JSON.parse(JSON.stringify(results.rhythm).replace(/"\$"/gmi, '"@"'))
+
+        fs.writeFile(os.homedir() + '/.local/share/rhythmbox/rhythmdb.xml', `<?xml version="1.0" standalone="yes"?>\n${o2x(results.rhythm)}`, (err) => {
+          if (err) {
+            console.log(err)
+          }
+
+          console.log('Finish !')
+          console.log('You can start Rhythmbox now.')
+        })
+      })
+    }
+  })
+}
